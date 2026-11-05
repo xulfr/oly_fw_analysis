@@ -43,6 +43,16 @@ are potential building blocks, not a validated standalone feature set. The OSD
 resource alias is a separate changed component and should be isolated in the
 first redesigned variant.
 
+Initial call-path check: stock `pages_hook` replaces the final call inside
+`0x60dad4eb`. A full-image disassembly found direct calls to `0x60dad4eb`
+at `0x60dad440` and `0x60dad4ae`; both callers are themselves in Section 7.
+A raw pointer scan found no four-byte pointer to any of these three entries.
+This does not exclude an indirect or computed caller, but the obvious one-level
+interception points do not escape Section 7. The earlier emulator handoff also
+reports that `parent_hook` was not reached in the UI flows tried and the
+Section 6 `display_hook` was not called with the page visible. Those two sites
+need an actual-use check before spending relocation effort on them.
+
 ## Investigation order
 
 1. For each Section 7 site, trace the stock caller and ownership of the
