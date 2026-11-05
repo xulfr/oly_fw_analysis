@@ -66,6 +66,67 @@ the task-start routine for `FIRMUP_CLI` at `0x6081e2ea`. Its next instruction
 is at `0x6081e2f1`, but that is only a *candidate* interception point: the
 Section 7 load state, task scheduling and cache behavior require proof.
 
+## Offline main-image prototype (5 November)
+
+`build_om5ii_overlay_prototype.py` now creates a **non-installable main payload**
+from the official BIN and a decoded build of the current source. The current
+source was independently rebuilt with `tools/oly_patch.py` and its decoded
+main was byte-identical to the archived failed build. The prototype keeps all
+non-Section-6/7 main edits, restores both compressed spans to stock, places a
+3,804-byte installer/table in verified `0xff` space at `0x60845d00`, and
+replaces the six-byte instruction at `0x6081e2f1` with a jump. The installer
+waits for Section 7, compares **all 1,712 original target bytes** before any
+write, copies the 16 edit ranges through their uncached aliases, replays the
+displaced stock instruction, and resumes at `0x6081e2f7`. Extension/state
+ranges are copied before hooks and pointers. The generated output contains a
+decoded and stored `0x100` payload, assembly intermediates and `build.json`;
+it contains **no update container or card filename**.
+
+The prototype builder independently checks linked table addresses, before and
+after bytes, hook size, cave capacity, main-image round trip and exact hashes
+for the entire stored *and* expanded Sections 6 and 7. Both stored hashes
+match the official source (`28e6ccc8…cf152` and `99a299fc…cd97`). The native
+OM-Emu fixture reached the stock continuation with its original registers,
+PSW and stack preserved, then read back all 16 expected edited ranges. Corrupting one
+original byte made the installer return without changing any range. These
+tests were performed with explicit emulator RAM setup because OM-Emu does not
+run the real E148 loader. A whole-main comparison after simulated overlay
+application matches the current full patch except for the new installer and
+the six-byte task-92 hook.
+
+The prototype builder can also take the independently rebuilt `0x101` payload
+with `--modified-osd`. It validates its exact source-defined hash and writes it
+separately, preserving the existing profile-icon treatment. Without that option,
+the report names stock OSD. With modified OSD, it also composes all five
+official components **in memory**, verifies payloads, metadata and parser
+round trip, and records a full-container hash (`cfce2fb8…7f349c`, 90,832,896
+bytes for this build). Neither variant writes an update container.
+
+This is **not a camera candidate**. The actual Section 7 load completion and
+task schedule, physical instruction-cache visibility after RAM writes,
+cross-core behavior, saved-settings startup and real capture remain untested.
+The original non-Section-6/7 boot-time edits remain, so exact stock compressed
+spans alone would not establish the boot-loop cause or a safe recovery route.
+
+Reproduction from this repository, using a locally held official BIN and the
+MN103 toolchain (all output paths must be new):
+
+```sh
+python3 tools/oly_patch.py patches/hsl/om-5-ii \
+  --stock /path/to/OLY_E_148_1100_0000_0000.BIN \
+  --out /tmp/om5ii-original-build --decoded \
+  --as /path/to/mn10300-elf-as --ld /path/to/mn10300-elf-ld \
+  --objcopy /path/to/mn10300-elf-objcopy
+python3 research/build_om5ii_overlay_prototype.py \
+  --patch patches/hsl/om-5-ii/patch.json \
+  --stock /path/to/OLY_E_148_1100_0000_0000.BIN \
+  --decoded /tmp/om5ii-original-build/decoded/0100.bin \
+  --modified-osd /tmp/om5ii-original-build/decoded/0101.bin \
+  --out /tmp/om5ii-overlay-prototype \
+  --as /path/to/mn10300-elf-as --ld /path/to/mn10300-elf-ld \
+  --objcopy /path/to/mn10300-elf-objcopy
+```
+
 ## Investigation order
 
 1. For each Section 7 site, trace the stock caller and ownership of the
