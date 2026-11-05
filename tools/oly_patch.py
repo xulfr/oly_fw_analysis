@@ -30,7 +30,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from oly_container import parse, replace_payload, reconstruct  # noqa: E402
-from oly_compress import expand_image, repack_image  # noqa: E402
+from oly_compress import expand_image, repack_image, spans  # noqa: E402
 from oly_resource import alias_images, liblz4_version  # noqa: E402
 
 SCHEMA = 'oly-patch/1'
@@ -47,6 +47,25 @@ def require(condition, message):
 
 def kind_of(text):
     return int(text, 16)
+
+
+def preserved_spans(stock, expanded, patched, offsets):
+    """Enforce stock bytes for compressed spans named by stored payload offset."""
+    ranges = {at: size for at, _, size in spans(stock)}
+    require(len(offsets) == len(set(offsets)), 'Repeated preserved olycompress span')
+    stock_expanded = expand_image(stock)
+    result = {}
+    for offset in offsets:
+        at = int(offset, 16)
+        require(at in ranges, f'Invalid preserved olycompress span: {offset}')
+        size = ranges[at]
+        before, after = stock[at:at + size], patched[at:at + size]
+        require(stock_expanded[at:at + size] == expanded[at:at + size],
+                f'Expanded olycompress span {offset} differs from stock')
+        require(before == after, f'Stored olycompress span {offset} differs from stock')
+        result[offset] = {'offset': at, 'bytes': size, 'stored_sha256': sha(before),
+                             'expanded_sha256': sha(expanded[at:at + size])}
+    return result
 
 
 def encode_format3_bitmap(pixels, header, width, height, size):
@@ -224,11 +243,16 @@ def build(patch_dir, stock_path, out, tools=None, decoded=False, untested=False)
         if comp.compressed:
             require(sha(patched[kind]) == comp.spec['stored_after_sha256'],
                     f'Repacked component {kind:#x} differs from the reference')
+    preserved = {f'{kind:#x}': preserved_spans(by_kind[kind].payload, expanded[kind], patched[kind],
+                                               comp.spec['preserve_olycompress_spans'])
+                 for kind, comp in comps.items() if 'preserve_olycompress_spans' in comp.spec}
     report = {'schema': SCHEMA, 'name': spec['name'], 'model': spec['model'], 'firmware': spec['firmware'],
               'release': spec.get('release'), 'camera_tested': tested, 'stock_sha256': sha(stock),
               'components': {f'{k:#x}': {'sha256': sha(v), 'expanded_sha256': sha(expanded[k]),
                                         'changed_bytes': sum(a != b for a, b in zip(v, by_kind[k].payload))}
                              for k, v in patched.items()}}
+    if preserved:
+        report['preserved_olycompress_spans'] = preserved
 
     if decoded:
         (out / 'decoded').mkdir()

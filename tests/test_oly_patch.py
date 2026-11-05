@@ -9,6 +9,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from oly_container import encode, parse, sum32
+from oly_compress import MAGIC, _encode, expand_image
 import oly_patch
 
 
@@ -49,6 +50,26 @@ def definition(**overrides):
 
 
 class PatchBuilderTests(unittest.TestCase):
+    def test_preserved_compressed_span_checks_expanded_and_stored_bytes(self):
+        raw = b'abcd' * 32
+        packed = bytes(_encode(b'abcd', 4, 124) + _encode(b''))
+        stock = bytearray(b'\xff' * len(raw))
+        stock[:16] = MAGIC
+        struct.pack_into('<II', stock, 16, len(packed), len(raw))
+        stock[24:32] = bytes(8)
+        stock[32:32 + len(packed)] = packed
+        stock = bytes(stock)
+        expanded = expand_image(stock)
+        self.assertEqual(oly_patch.preserved_spans(stock, expanded, stock, ['0x0'])['0x0']['bytes'], len(raw))
+        changed = bytearray(expanded)
+        changed[50] ^= 1
+        with self.assertRaisesRegex(ValueError, 'Expanded olycompress span'):
+            oly_patch.preserved_spans(stock, bytes(changed), stock, ['0x0'])
+        changed = bytearray(stock)
+        changed[-1] ^= 1
+        with self.assertRaisesRegex(ValueError, 'Stored olycompress span'):
+            oly_patch.preserved_spans(stock, expanded, bytes(changed), ['0x0'])
+
     def run_build(self, spec, **kwargs):
         temp = Path(self.enterContext(tempfile.TemporaryDirectory()))
         (temp / "patch").mkdir()
