@@ -22,6 +22,7 @@ from om5ii_overlay_inventory import BASE, COMPRESSED_OFFSETS, inventory  # noqa:
 HOOK = 0x6081e2f1
 OVERLAY = 0x60845d00
 OVERLAY_END = 0x60847000
+KNOWN_BOOT_LOOP_SHA256 = 'cfce2fb8393a20c746a91e94ef4143d880170efed9d43e43b134f87fe67f349c'
 
 
 def sha(data):
@@ -135,6 +136,7 @@ def build(args):
     composed = [replace_payload(block, stored) if block.kind == 0x100 else
                 replace_payload(block, osd) if block.kind == 0x101 else block for block in blocks]
     image = reconstruct(composed)
+    image_sha = sha(image)
     verified = parse(image)
     if [block.payload for block in verified] != [block.payload for block in composed]:
         raise ValueError('In-memory full-container round trip failed')
@@ -143,6 +145,8 @@ def build(args):
         raise ValueError('In-memory full-container metadata changed')
     install = None
     if args.write_complete_update:
+        if image_sha == KNOWN_BOOT_LOOP_SHA256:
+            raise ValueError('Install output blocked: this exact complete update caused a reported camera boot loop')
         if osd_variant != 'modified':
             raise ValueError('A full-feature update requires --modified-osd')
         install = out / 'install' / 'DCOLYMP' / 'E1489999.BIN'
@@ -164,7 +168,7 @@ def build(args):
                'install': str(install.relative_to(out)) if install else None,
                'restore_stock': str(restore.relative_to(out)) if install else None,
                'post_overlay_matches_current_patch': True, 'osd_variant': osd_variant,
-               'osd_sha256': sha(osd), 'full_container_sha256': sha(image),
+               'osd_sha256': sha(osd), 'full_container_sha256': image_sha,
                'full_container_bytes': len(image), 'camera_tested': False}
     (out / 'build.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps({k: summary[k] for k in ('hook_bytes', 'overlay_bytes', 'overlay_range_count',

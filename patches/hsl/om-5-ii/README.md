@@ -9,6 +9,12 @@
 > unsafe for camera use pending investigation. This recovery does not establish
 > that other failures would be recoverable. See [brick-risk review](BRICK-RISK.md).
 
+> **Second boot failure, 5 November 2026:** The owner reports the same boot loop
+> after installing the [complete five-component overlay build](../../../research/OM5II-SECOND-BOOT-FAILURE-2026-11-05.md)
+> whose compressed Sections 6 and 7 were exactly stock. The complete stock
+> restore worked afterward. The repeated symptom does not identify the failing
+> code or resource. Do not use either build for another camera trial.
+
 This port targets the official E148 firmware 1.1 build 1100. It restores Color
 Profile 1–3 in the picture-mode selector and adds Hue and Lightness beside the
 stock saturation axis. Each Color Profile also recalls its own white balance.

@@ -1,5 +1,13 @@
 # OM-5 Mark II E148 firmware 1.1: HSL/WB brick-risk review
 
+**5 November 2026 update:** A complete five-component variant with byte-identical
+stock compressed Sections 6 and 7 also caused a reported boot loop. The owner
+reports that the complete stock restore worked afterward. This weakens the
+modified-compressed-stream and omitted-component hypotheses as necessary
+explanations. It does not isolate the main edits, the new runtime overlay, or
+the modified OSD. **Do not retry either failed build.** See the
+[second incident report](../../../research/OM5II-SECOND-BOOT-FAILURE-2026-11-05.md).
+
 ## 4 November 2026 camera incident — do not flash
 
 **Do not flash `codex/om5ii-hsl` build `1bd6276` or its generated install

@@ -1127,6 +1127,7 @@
     ],
     "file": "DCOLYMP/E1489999.BIN",
     "sha256": "35f0caac4b70f1e59e3d5311fdf74a8c021d720755a7441796b080707b79d434",
+    "known_boot_failure": true,
     "bytes": 37486592,
     "restore_sha256": "1e0d38f87b367c92023e8b827910fa94a9d9ec511ebec286406ca36d20066fde"
   },

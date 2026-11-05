@@ -278,13 +278,17 @@ def build(patch_dir, stock_path, out, tools=None, decoded=False, untested=False)
         target.parent.mkdir(parents=True)
         target.write_bytes(restore)
         if tested or untested:
+            require(not package.get('known_boot_failure'),
+                    'Install output blocked: this exact patch caused a reported camera boot failure')
             target = out / 'install' / package['file']
             target.parent.mkdir(parents=True)
             target.write_bytes(image)
             report['install'] = 'install/' + package['file']
         else:
             report['install'] = None
-            report['install_withheld'] = 'Not tested on a camera; use --write-untested-package to write it anyway'
+            report['install_withheld'] = ('Known camera boot failure; install output blocked'
+                                          if package.get('known_boot_failure') else
+                                          'Not tested on a camera; use --write-untested-package to write it anyway')
 
     if toolchain:
         report['tool_versions'] = {n: subprocess.check_output([t, '--version'], text=True).splitlines()[0] for n, t in toolchain.items()}

@@ -1,8 +1,15 @@
 # OM-5 II full-feature redesign: stock Section 7
 
-5 November 2026. Offline work on `codex/om5ii-stock-section7`, based on the
-xulfr fork's `codex/om5ii-hsl` at `ebda837`. No camera access or installable
-image is part of this milestone. The 4 November boot failure remains unexplained.
+> **DO NOT FLASH.** The complete five-component build SHA-256
+> `cfce2fb8393a20c746a91e94ef4143d880170efed9d43e43b134f87fe67f349c`
+> produced the same reported camera boot loop as the earlier two-component
+> build. The owner reports that stock restore succeeded afterward. See the
+> [second incident report](OM5II-SECOND-BOOT-FAILURE-2026-11-05.md).
+
+5 November 2026. Research on `codex/om5ii-stock-section7`, based on the
+xulfr fork's `codex/om5ii-hsl` at `ebda837`. This document records the offline
+build evidence. A complete image was subsequently installed and failed to boot.
+The 4 and 5 November root causes remain unexplained.
 
 ## Build boundary
 
@@ -101,7 +108,7 @@ the report names stock OSD. With modified OSD, it composes all five official
 components, verifies payloads, metadata and parser round trip, and records a
 full-container hash.
 
-At the owner's request, `--write-complete-update` now writes the complete
+At the owner's request, `--write-complete-update` wrote the complete
 five-component image to `install/DCOLYMP/E1489999.BIN` and the complete
 official stock image to `restore-stock/DCOLYMP/E1489999.BIN`. The full-feature
 build generated on 5 November 2026 is 90,832,896 bytes, SHA-256
@@ -110,6 +117,9 @@ An independent parse and round trip confirmed ordered kinds `0x100`, `0x101`,
 `0x106`, `0x10e`, `0x102`; unchanged headers/metadata; byte-identical stock
 payloads for the last three; stock stored Sections 6 and 7; and a full stock
 restore hash of `9de5d77e1d290fa2ed4ebc7d75cee0ed490befbc89566722467d1d421d66d637`.
+The owner reports that this complete update caused a boot loop and the stock
+restore then worked. Both builders now reject install output for their exact
+known failed image hashes.
 
 The output is structurally installable but **not camera-qualified**. The actual Section 7 load completion and
 task schedule, physical instruction-cache visibility after RAM writes,
@@ -133,10 +143,15 @@ python3 research/build_om5ii_overlay_prototype.py \
   --modified-osd /tmp/om5ii-original-build/decoded/0101.bin \
   --out /tmp/om5ii-overlay-prototype \
   --as /path/to/mn10300-elf-as --ld /path/to/mn10300-elf-ld \
-  --objcopy /path/to/mn10300-elf-objcopy --write-complete-update
+  --objcopy /path/to/mn10300-elf-objcopy
 ```
 
-## Investigation order
+## Historical investigation order (superseded)
+
+The steps below were drafted before the second camera failure. They are kept
+as design history, not as a recommendation to install another variant. The
+[second incident report](OM5II-SECOND-BOOT-FAILURE-2026-11-05.md) governs
+further work.
 
 1. For each Section 7 site, trace the stock caller and ownership of the
    pointer/table. Test whether an earlier-section hook can intercept the same

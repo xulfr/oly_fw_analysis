@@ -92,6 +92,16 @@ class PatchBuilderTests(unittest.TestCase):
         self.assertFalse((out / "install").exists())
         self.assertIsNone(report["install"])
 
+    def test_known_boot_failure_cannot_write_install(self):
+        spec = definition(package={"components": "all", "file": "DCOLYMP/E0009999.BIN",
+                                   "known_boot_failure": True})[0]
+        out, report = self.run_build(spec)
+        self.assertIsNone(report["install"])
+        self.assertIn("Known camera boot failure", report["install_withheld"])
+        self.assertFalse((out / "install").exists())
+        with self.assertRaisesRegex(ValueError, "Install output blocked"):
+            self.run_build(spec, untested=True)
+
     def test_selected_components_only(self):
         spec = definition(package={"components": ["0x100"], "file": "X.BIN"}, camera_tested=True)[0]
         out, _ = self.run_build(spec)
