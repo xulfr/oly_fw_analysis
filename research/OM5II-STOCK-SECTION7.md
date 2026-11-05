@@ -53,6 +53,17 @@ reports that `parent_hook` was not reached in the UI flows tried and the
 Section 6 `display_hook` was not called with the page visible. Those two sites
 need an actual-use check before spending relocation effort on them.
 
+`om5ii_overlay_inventory.py` independently validates the locally supplied
+official BIN, the failed build's expanded main image and all declared ranges.
+It proves that copying the 16 Section 6/7 ranges (1,712 bytes total) into a
+stock expanded main reproduces both changed expanded spans exactly. The report
+contains addresses and hashes, not firmware or patch bytes. This establishes
+the payload needed by a hypothetical RAM overlay; it does not establish a safe
+installer. The Section 4 task at `0x6081e273` waits for Section 6 and calls
+the task-start routine for `FIRMUP_CLI` at `0x6081e2ea`. Its next instruction
+is at `0x6081e2f1`, but that is only a *candidate* interception point: the
+Section 7 load state, task scheduling and cache behavior require proof.
+
 ## Investigation order
 
 1. For each Section 7 site, trace the stock caller and ownership of the
