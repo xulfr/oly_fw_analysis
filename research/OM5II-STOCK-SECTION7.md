@@ -66,7 +66,7 @@ the task-start routine for `FIRMUP_CLI` at `0x6081e2ea`. Its next instruction
 is at `0x6081e2f1`, but that is only a *candidate* interception point: the
 Section 7 load state, task scheduling and cache behavior require proof.
 
-## Offline main-image prototype (5 November)
+## Full-feature main-image design (5 November)
 
 `build_om5ii_overlay_prototype.py` now creates a **non-installable main payload**
 from the official BIN and a decoded build of the current source. The current
@@ -78,9 +78,9 @@ replaces the six-byte instruction at `0x6081e2f1` with a jump. The installer
 waits for Section 7, compares **all 1,712 original target bytes** before any
 write, copies the 16 edit ranges through their uncached aliases, replays the
 displaced stock instruction, and resumes at `0x6081e2f7`. Extension/state
-ranges are copied before hooks and pointers. The generated output contains a
-decoded and stored `0x100` payload, assembly intermediates and `build.json`;
-it contains **no update container or card filename**.
+ranges are copied before hooks and pointers. By default the generated output
+contains decoded and stored `0x100` payloads, assembly intermediates and
+`build.json`; writing an update container requires `--write-complete-update`.
 
 The prototype builder independently checks linked table addresses, before and
 after bytes, hook size, cave capacity, main-image round trip and exact hashes
@@ -94,15 +94,24 @@ run the real E148 loader. A whole-main comparison after simulated overlay
 application matches the current full patch except for the new installer and
 the six-byte task-92 hook.
 
-The prototype builder can also take the independently rebuilt `0x101` payload
+The builder can also take the independently rebuilt `0x101` payload
 with `--modified-osd`. It validates its exact source-defined hash and writes it
 separately, preserving the existing profile-icon treatment. Without that option,
-the report names stock OSD. With modified OSD, it also composes all five
-official components **in memory**, verifies payloads, metadata and parser
-round trip, and records a full-container hash (`cfce2fb8…7f349c`, 90,832,896
-bytes for this build). Neither variant writes an update container.
+the report names stock OSD. With modified OSD, it composes all five official
+components, verifies payloads, metadata and parser round trip, and records a
+full-container hash.
 
-This is **not a camera candidate**. The actual Section 7 load completion and
+At the owner's request, `--write-complete-update` now writes the complete
+five-component image to `install/DCOLYMP/E1489999.BIN` and the complete
+official stock image to `restore-stock/DCOLYMP/E1489999.BIN`. The full-feature
+build generated on 5 November 2026 is 90,832,896 bytes, SHA-256
+`cfce2fb8393a20c746a91e94ef4143d880170efed9d43e43b134f87fe67f349c`.
+An independent parse and round trip confirmed ordered kinds `0x100`, `0x101`,
+`0x106`, `0x10e`, `0x102`; unchanged headers/metadata; byte-identical stock
+payloads for the last three; stock stored Sections 6 and 7; and a full stock
+restore hash of `9de5d77e1d290fa2ed4ebc7d75cee0ed490befbc89566722467d1d421d66d637`.
+
+The output is structurally installable but **not camera-qualified**. The actual Section 7 load completion and
 task schedule, physical instruction-cache visibility after RAM writes,
 cross-core behavior, saved-settings startup and real capture remain untested.
 The original non-Section-6/7 boot-time edits remain, so exact stock compressed
@@ -124,7 +133,7 @@ python3 research/build_om5ii_overlay_prototype.py \
   --modified-osd /tmp/om5ii-original-build/decoded/0101.bin \
   --out /tmp/om5ii-overlay-prototype \
   --as /path/to/mn10300-elf-as --ld /path/to/mn10300-elf-ld \
-  --objcopy /path/to/mn10300-elf-objcopy
+  --objcopy /path/to/mn10300-elf-objcopy --write-complete-update
 ```
 
 ## Investigation order

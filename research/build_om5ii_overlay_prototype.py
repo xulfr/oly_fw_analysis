@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build a non-installable OM-5 II main-image prototype with stock LZ4 spans.
+"""Build an OM-5 II overlay update with stock Section 6 and 7 LZ4 spans.
 
-The prototype has a post-load RAM overlay for the original Section 6/7 edits.
-It is for static review and emulator work; instruction-cache synchronization,
-task concurrency and physical boot have not been qualified.
+The update has a post-load RAM overlay for the original Section 6/7 edits.
+Writing a complete five-component install file is explicit. Instruction-cache
+synchronization, task concurrency and physical boot have not been qualified.
 """
 import argparse
 import hashlib
@@ -141,12 +141,28 @@ def build(args):
     if any(before.header != after.header or before.trailer[:28] != after.trailer[:28]
            for before, after in zip(blocks, verified)):
         raise ValueError('In-memory full-container metadata changed')
+    install = None
+    if args.write_complete_update:
+        if osd_variant != 'modified':
+            raise ValueError('A full-feature update requires --modified-osd')
+        install = out / 'install' / 'DCOLYMP' / 'E1489999.BIN'
+        install.parent.mkdir(parents=True)
+        install.write_bytes(image)
+        if sha(install.read_bytes()) != sha(image):
+            raise ValueError('Written complete update differs from verified image')
+        restore = out / 'restore-stock' / 'DCOLYMP' / 'E1489999.BIN'
+        restore.parent.mkdir(parents=True)
+        restore.write_bytes(source)
+        if sha(restore.read_bytes()) != sha(source):
+            raise ValueError('Written full stock restore differs from official source')
     summary = {'schema': 'om5ii-overlay-prototype/1', 'stock_sha256': sha(source),
                'source_patch_expanded_sha256': sha(patched), 'expanded_main_sha256': sha(expanded),
                'stored_main_sha256': sha(stored), 'hook_address': hex(HOOK), 'hook_bytes': len(hook_bytes),
                'overlay_address': hex(OVERLAY), 'overlay_bytes': len(overlay_bytes),
                'overlay_range_count': len(rows), 'overlay_data_bytes': report['overlay_data_bytes'],
-               'preserved_olycompress_spans': equality, 'installable': False,
+               'preserved_olycompress_spans': equality, 'installable': install is not None,
+               'install': str(install.relative_to(out)) if install else None,
+               'restore_stock': str(restore.relative_to(out)) if install else None,
                'post_overlay_matches_current_patch': True, 'osd_variant': osd_variant,
                'osd_sha256': sha(osd), 'full_container_sha256': sha(image),
                'full_container_bytes': len(image), 'camera_tested': False}
@@ -161,6 +177,8 @@ def main():
         parser.add_argument('--' + flag, type=Path, required=True)
     parser.add_argument('--modified-osd', type=Path,
                         help='optional rebuilt 0x101 payload; preserves the full icon treatment')
+    parser.add_argument('--write-complete-update', action='store_true',
+                        help='write all five components as a card update and a full stock restore')
     parser.add_argument('--as', dest='assembler', required=True)
     parser.add_argument('--ld', dest='linker', required=True)
     parser.add_argument('--objcopy', required=True)
