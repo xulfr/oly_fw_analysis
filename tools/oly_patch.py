@@ -34,6 +34,10 @@ from oly_compress import expand_image, repack_image, spans  # noqa: E402
 from oly_resource import alias_images, liblz4_version  # noqa: E402
 
 SCHEMA = 'oly-patch/1'
+KNOWN_BOOT_FAILURES = {
+    '35f0caac4b70f1e59e3d5311fdf74a8c021d720755a7441796b080707b79d434',
+    'cfce2fb8393a20c746a91e94ef4143d880170efed9d43e43b134f87fe67f349c',
+}
 
 
 def sha(data):
@@ -188,6 +192,13 @@ def build(patch_dir, stock_path, out, tools=None, decoded=False, untested=False)
     for row in spec.get('ranges', []):
         comps[kind_of(row['component'])].declare(row)
 
+    # E148 has gaps between loaded sections. Padding before the next section
+    # is not necessarily loaded; check the native end selector, not file spans.
+    if 0x100 in comps:
+        from om5ii_boot_audit import STOCK_SHA, audit_ranges
+        if sha(comps[0x100].data) == STOCK_SHA:
+            audit_ranges(bytes(comps[0x100].data), spec.get('ranges', []))
+
     tools = tools or {}
     toolchain = None
     if spec.get('assembly'):
@@ -278,7 +289,7 @@ def build(patch_dir, stock_path, out, tools=None, decoded=False, untested=False)
         target.parent.mkdir(parents=True)
         target.write_bytes(restore)
         if tested or untested:
-            require(not package.get('known_boot_failure'),
+            require(not package.get('known_boot_failure') and sha(image) not in KNOWN_BOOT_FAILURES,
                     'Install output blocked: this exact patch caused a reported camera boot failure')
             target = out / 'install' / package['file']
             target.parent.mkdir(parents=True)

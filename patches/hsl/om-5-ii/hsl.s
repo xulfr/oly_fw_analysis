@@ -2,7 +2,7 @@
  * from the OM-3 patch. NOT tested on a camera; exercised in OM-Emu only.
  * Code and state live in the FF tails inside the loaded extents of sections 2,
  * 6, 7 and 8. E148 loads all ten sections once at boot (8 before 2) and never clears their
- * loaded bits (loader 0x60046418, bits 0xa26e2698). See README.md. */
+ * completion bits (finalizer 0x600464d0, bits 0xa26e2694). See README.md. */
 .section .state,"aw"
  .space 64,0
 /* INFO keeps its native individual/all role. Delete (trash) switches axis:
@@ -759,8 +759,8 @@ light_lut:
 .section .refresh_hook,"ax"
  jmp refresh_guard
  nop
-/* Section 2 tail: run the section-8 code only once section 8 is loaded (bit 7
- * of the loader's bits; boot loads it before section 2, so this is a guard). */
+/* Section 2 tail: enter the section-5 refresh extension only after section 5
+ * initialization completes (bit 4 at 0xa26e2694). */
 /* Jump-table cases 54..56 (stock: the default 0x602e06ca). Note the profile
  * for the tail, then take the stock default path unchanged. */
 .section .refresh_cases,"a"

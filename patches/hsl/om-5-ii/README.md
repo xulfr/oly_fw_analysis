@@ -15,6 +15,12 @@
 > restore worked afterward. The repeated symptom does not identify the failing
 > code or resource. Do not use either build for another camera trial.
 
+**6 November source correction:** the startup guards now use completed section
+initialisation, rather than decoder submission. The oversized RAM-overlay
+prototype is blocked by native section bounds. See the [findings and
+regressions](../../../research/OM5II-STARTUP-FIX-2026-11-06.md). The corrected
+source has not been booted on hardware.
+
 This port targets the official E148 firmware 1.1 build 1100. It restores Color
 Profile 1–3 in the picture-mode selector and adds Hue and Lightness beside the
 stock saturation axis. Each Color Profile also recalls its own white balance.
@@ -254,8 +260,9 @@ Creative dial).
   reset mode is not current (after section 6 has loaded). OM-Emu: stock wiped
   the test values, patched kept them.
 - **WB before section 6 loads.** The WB wrapper uses section-6 code and state,
-  so it takes the stock path until section 6's loaded bit (`0x20` of
-  `0xa26e2698`) is set.
+  so it takes the stock path until section 6's completed-initialisation bit (`0x20` of
+  `0xa26e2694`) is set. The old `0xa26e2698` flag only establishes submission
+  for compressed sections and was insufficient.
 - **Axis title paint.** `paint_axis` draws with the caller's context in place
   and restores the two fields it changes (+52 style, +76 font set by
   `stock_font` at `0x60d51fa2`), instead of copying 684 bytes of context to

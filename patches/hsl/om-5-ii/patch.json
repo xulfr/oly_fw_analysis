@@ -12,9 +12,9 @@
       "cpu_base": "0x60021020",
       "image_transform": "olycompress",
       "stored_before_sha256": "f9c6b0bb37675a2b031ccf09292796ab5793994b8ce2053dcfd7f9fe68035cd8",
-      "stored_after_sha256": "0258d0f9e6e4c8304dc7b7ae9c072f8aa8b0e24767e3790b673c180fa9144a6e",
+      "stored_after_sha256": "b7c23b1a5f4ae3f3b6e7d5bd72e6048ab82d3ff58a4892b6f193dbab56b3898b",
       "before_sha256": "7ae7d4c60990cc859c070e0ceb6cbe612f9c5b260713f2f1256e51d137851c61",
-      "after_sha256": "84904219bb30dcdc4ab7b24110b1b2bc966ab5923fd69bce7699586199379421",
+      "after_sha256": "ab6151ff53f024ddd6d1fb14712cde7ce47693382104a13e631af79b7ecff63e",
       "repack": "split"
     },
     "0x101": {
@@ -223,7 +223,7 @@
       "address": "0x605af560",
       "bytes": 47,
       "before_sha256": "77b51f20da095151e2792a92435f304c817e2dd9b58c1d5cbf2fc3f784a4108f",
-      "after_sha256": "0d8786e338763122ebfaad152c141a5f4d28bf665880497c98f7e6b2e6b677ee"
+      "after_sha256": "43b2085ad70610f32b9c69a5a9a657938bc50bcae1298c9c0d1918e2b8a0c508"
     },
     {
       "component": "0x100",
@@ -263,7 +263,7 @@
       "address": "0x613f2b80",
       "bytes": 484,
       "before_sha256": "d72674baf21b2f65f74ecc9fbd4985ee3916bead8c4745266ad61b43ab964322",
-      "after_sha256": "5adc0958a4c5fc553b7c61928eee8610030f0f5468b0dde6b7be00b79da67493"
+      "after_sha256": "48e047c12ec27d5f9291dc16448902d223f40718e38ea1481f9920c3f60e3496"
     },
     {
       "component": "0x100",
@@ -287,7 +287,7 @@
       "address": "0x605af5cc",
       "bytes": 555,
       "before_sha256": "a54983043a6d0b83855d5c6a0fe6a3534e297b3350269997b236d9399fd983f6",
-      "after_sha256": "181055fe820806649ad8031b1c4dbaab82047fb8636cfd52537b2d34ad80ddff"
+      "after_sha256": "a3d4253a1a15ec2d8b3ae1a518e1725c1b301af76998d090081dcf0131c098a1"
     },
     {
       "component": "0x100",
@@ -1121,15 +1121,11 @@
     }
   ],
   "package": {
-    "components": [
-      "0x100",
-      "0x101"
-    ],
+    "components": "all",
     "file": "DCOLYMP/E1489999.BIN",
-    "sha256": "35f0caac4b70f1e59e3d5311fdf74a8c021d720755a7441796b080707b79d434",
-    "known_boot_failure": true,
-    "bytes": 37486592,
-    "restore_sha256": "1e0d38f87b367c92023e8b827910fa94a9d9ec511ebec286406ca36d20066fde"
+    "sha256": "e2ca5b281b9cb43ff3b7d49c745c908ec02210f79ab9a52245b379afc66d92e1",
+    "bytes": 90832896,
+    "restore_sha256": "9de5d77e1d290fa2ed4ebc7d75cee0ed490befbc89566722467d1d421d66d637"
   },
   "resource_aliases": [
     {

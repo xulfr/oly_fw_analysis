@@ -4,7 +4,8 @@ SECTIONS {
  .wb_profile 0x613f2e00 : { *(.wb_profile) }
 }
 PM_ID = 111;
-loaded_bits = 0xa26e2698;
+/* Completed initialization, not the asynchronous load-submission word at +4. */
+loaded_bits = 0xa26e2694;
 commit_resume = 0x602d19bb;
 busy = 0xa0ca7ff8;
 stock_get = 0x602d000d;

@@ -11,6 +11,10 @@ xulfr fork's `codex/om5ii-hsl` at `ebda837`. This document records the offline
 build evidence. A complete image was subsequently installed and failed to boot.
 The 4 and 5 November root causes remain unexplained.
 
+**6 November correction:** the installer exceeds the actual section-5 loaded
+end by 3,036 bytes. The direct-memory emulator fixture concealed this error.
+The builder now rejects it; see [native loader findings](OM5II-STARTUP-FIX-2026-11-06.md).
+
 ## Build boundary
 
 The official E148 1.1 main payload contains two `olycompress` spans:

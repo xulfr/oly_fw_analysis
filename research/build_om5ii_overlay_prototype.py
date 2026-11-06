@@ -18,10 +18,12 @@ from oly_compress import expand_image, repack_image, spans  # noqa: E402
 from oly_container import parse, reconstruct, replace_payload  # noqa: E402
 from oly_patch import preserved_spans  # noqa: E402
 from om5ii_overlay_inventory import BASE, COMPRESSED_OFFSETS, inventory  # noqa: E402
+from om5ii_boot_audit import loader_regions, require_loaded_range  # noqa: E402
 
 HOOK = 0x6081e2f1
 OVERLAY = 0x60845d00
-OVERLAY_END = 0x60847000
+# Section 5 ends at 0x60846000. 0x60847000 is the next section's START.
+OVERLAY_END = 0x60846000
 KNOWN_BOOT_LOOP_SHA256 = 'cfce2fb8393a20c746a91e94ef4143d880170efed9d43e43b134f87fe67f349c'
 
 
@@ -74,6 +76,8 @@ def build(args):
                         str(out / 'overlay.elf'), str(out / (section + '.bin'))], check=True)
     hook_bytes = (out / 'overlay_hook.bin').read_bytes()
     overlay_bytes = (out / 'overlay.bin').read_bytes()
+    require_loaded_range(loader_regions(stock_expanded), OVERLAY,
+                         len(overlay_bytes), 'task-92 overlay code and data')
     if len(hook_bytes) != 6 or len(overlay_bytes) > OVERLAY_END - OVERLAY:
         raise ValueError(f'Hook or overlay exceeds allocation: {len(hook_bytes)}, {len(overlay_bytes)}')
     if stock_expanded[HOOK - BASE:HOOK - BASE + 6] != bytes.fromhex('fcdc97ebb360'):

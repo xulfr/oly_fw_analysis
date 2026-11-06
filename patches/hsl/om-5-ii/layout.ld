@@ -57,7 +57,8 @@ refresh_set = 0x602d2fdb;
 raw_get = 0x602f4c5b;
 refresh_default = 0x602e06ca;
 creset_resume = 0x602db536;
-loaded_bits = 0xa26e2698;
+/* Completed initialization, not the asynchronous load-submission word at +4. */
+loaded_bits = 0xa26e2694;
 prop_byte = 0x602bbed5;
 wc_set = 0x602f5173;
 wc_get = 0x602f514d;

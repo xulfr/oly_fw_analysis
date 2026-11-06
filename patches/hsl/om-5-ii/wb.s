@@ -1,14 +1,16 @@
 /* OM-5 Mark II 1.1 (E148 build 1100) per-profile white balance, ported from
  * the OM-3 patch. NOT tested on a camera; exercised in OM-Emu only.
  * The hook (native commit 0x602d19b1) and this body are both in section 2.
- * Section 6 (stock_ui_write, `busy`) is checked via the loader's bits. */
+ * Section 6 (stock_ui_write, `busy`) is checked via the completed-initialization bits. */
 .section .wb_hook,"ax"
  jmp wb_load
 .section .wb_extension,"ax"
 /* Only picture-mode (111) and WB edits enter the wrapper; others replay. */
 wb_load:
  /* The wrapper calls stock_ui_write and uses `busy`, both in section 6, which
-  * boot loads after section 2: take the stock path until it is loaded. */
+  * boot loads after section 2. The submission flag at 0xa26e2698 can
+  * precede decompression; use 0xa26e2694, set after the completion wait
+  * and constructors, before touching section-6 code or state. */
  movbu (loaded_bits),d2
  btst 0x20,d2
  beq wb_original
