@@ -6,6 +6,10 @@
 > Both physical installations led to a boot loop; the owner reports a successful
 > stock restore after each. Neither root cause is established. Known failed
 > install outputs are now blocked by the builders.
+>
+> **8 November 2026:** the corrected startup-readiness build also failed on
+> hardware, in the colour-profile screen
+> ([report](research/OM5II-THIRD-BOOT-FAILURE-2026-11-08.md)). Do not flash it.
 
 Shared knowledge and tools for studying and modifying Olympus and OM System
 camera firmware. The repository covers update files, startup, settings, image
