@@ -15,6 +15,12 @@
 > restore worked afterward. The repeated symptom does not identify the failing
 > code or resource. Do not use either build for another camera trial.
 
+> **Third boot failure, 8 November 2026:** the 6 November startup-readiness
+> build (`e2ca5b28…92e1`) booted to the shooting screen, then hung for a couple
+> of seconds on opening the colour-profile selection screen and entered a boot
+> loop. See the [third incident report](../../../research/OM5II-THIRD-BOOT-FAILURE-2026-11-08.md).
+> **Do not flash this build.** The package is now blocked as an install output.
+
 **6 November source correction:** the startup guards now use completed section
 initialisation, rather than decoder submission. The oversized RAM-overlay
 prototype is blocked by native section bounds. See the [findings and
