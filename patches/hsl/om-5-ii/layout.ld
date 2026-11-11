@@ -14,7 +14,8 @@ SECTIONS {
  .ext2 0x605af4b0 : { *(.ext2) }
  .ext6 0x60ca7b00 : { *(.ext6) }
  .ext7 0x612a4b98 : { *(.ext7) }
- .state 0x60ca7fc0 : { *(.state) }
+ .arm_hook 0x602f0b95 : { *(.arm_hook) }
+ .st8 0x613f2ed8 : { *(.st8) }
  .refresh_hook 0x602e0826 : { *(.refresh_hook) }
  .creset_hook 0x602db531 : { *(.creset_hook) }
  .refresh_cases 0x604997f0 : { *(.refresh_cases) }
@@ -26,7 +27,6 @@ SECTIONS {
  .ext8 0x613f2b80 : { *(.ext8) }
  .ext5 0x60845a00 : { *(.ext5) }
 }
-axis = 0xa0ca7fc0;
 screen_forward = 0x60ed5c18;
 stock_delete_action = 0x60ed6476;
 stock_container = 0x60e3ca0a;
@@ -62,8 +62,15 @@ loaded_bits = 0xa26e2694;
 prop_byte = 0x602bbed5;
 wc_set = 0x602f5173;
 wc_get = 0x602f514d;
-/* creset scratch in section 6's free tail (stock ff, unreferenced; uncached alias like axis) */
-creset_kind = 0xa0ca7e70;
-creset_ptr = 0xa0ca7e74;
-creset_ret = 0xa0ca7e78;
-creset_buf = 0xa0ca7e80;
+/* Heap state block (hsl.s .st8). The handle is the padding halfword after the
+ * HLS event manager's task id (object 0x6218c250, id at +0xac, next field +0xb0). */
+st_handle = 0x6218c2fe;
+hls_tid = 0x6218c2fc;
+ST_POOL = 0xa1e27d80;      /* class-1 heap pool 0xa1e27d80..0xa1e32ac0 (free() 0x6002385f) */
+ST_HANDLE_MAX = 43329;     /* pool span 44352 - block 1024 + 1 */
+trig = 0x602f0cc2;
+trig_resume = 0x602f0b9a;
+get_tid = 0x600317b4;
+malloc = 0x60023818;
+ASSERT(st_ptr == 0x613f2ed8, "wb.ld binds st_ptr")
+ASSERT(SIZEOF(.st8) <= 0x613f3000 - 0x613f2ed8, ".st8 leaves section 8")

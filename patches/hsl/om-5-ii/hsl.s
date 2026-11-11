@@ -3,8 +3,23 @@
  * Code and state live in the FF tails inside the loaded extents of sections 2,
  * 6, 7 and 8. E148 loads all ten sections once at boot (8 before 2) and never clears their
  * completion bits (finalizer 0x600464d0, bits 0xa26e2694). See README.md. */
-.section .state,"aw"
- .space 64,0
+/* Runtime state is NOT kept in the loaded image. Stock E148 makes no absolute
+ * store into it, and the 8 November camera failure began at the first such
+ * stores this patch made (research/OM5II-IMAGE-STORE-FAULT-2026-11-11.md).
+ * State lives in a 1024-byte heap block "P" (stock malloc, class-1 pool,
+ * uncached alias), allocated once on the first shutter half-press after boot.
+ * Its handle is the padding halfword after the HLS event manager's task id
+ * (.bss, zero at power-on). Until then every hook behaves as stock.
+ *   P+0 axis (0 saturation, 1 hue, 2 lightness)   P+4 colour editor object
+ *   P+8 reset-in-progress flag                    P+12 WB commit busy flag
+ *   P+16..55 axis label text (UTF-16)             P+64.. reserved (Caduceus) */
+ST_AXIS = 0
+ST_EDITOR = 4
+ST_RESET = 8
+ST_BUSY = 12
+ST_LABEL = 16
+.section .arm_hook,"ax"
+ jmp arm_hook
 /* INFO keeps its native individual/all role. Delete (trash) switches axis:
  * the colour-direct screen forwards its native 0x9016 command to the focused
  * widget, and the colour page container consumes it for the colour editor. */
@@ -47,13 +62,13 @@
  * 0x0418 (colour/picture-mode direct page) forward it to the focused widget,
  * as the same screen already does for INFO. Elsewhere: stock. */
 hsl_delete_action:
- mov d0,(axis+12)
- add -16,sp
+ add -24,sp
+ mov d0,(20,sp)
  mov d1,(4,sp)
  mov a0,(8,sp)
  mov a1,(12,sp)
  clr d1
- movbu d1,(axis+9)
+ mov d1,(16,sp)
  movbu (a0),d0
  cmp 4,d0
  bne delete_restore
@@ -65,19 +80,20 @@ hsl_delete_action:
  cmp 1,d0
  beq delete_restore
  mov 1,d0
- movbu d0,(axis+9)
+ mov d0,(16,sp)
 delete_restore:
  mov (4,sp),d1
  mov (8,sp),a0
  mov (12,sp),a1
- add 16,sp
- movbu (axis+9),d0
+ mov (16,sp),d0
  cmp 0,d0
  beq delete_stock
+ add 24,sp
  mov 0x9016,d0
  jmp screen_forward
 delete_stock:
- mov (axis+12),d0
+ mov (20,sp),d0
+ add 24,sp
  jmp stock_delete_action
 
 /* Colour page container command method (vtable entry 0). Stock forwards INFO
@@ -105,14 +121,17 @@ hsl_container:
  movm [d2,d3,a2,a3],(sp)
  add -8,sp
  mov a0,a2
- mov a0,(axis+4)
- movbu (axis),d0
+ call st_ptr,[],8
+ cmp 0,a0
+ beq container_unarmed
+ mov a2,(ST_EDITOR,a0)
+ movbu (ST_AXIS,a0),d0
  inc d0
  cmp 3,d0
  bcs container_axis
  clr d0
 container_axis:
- movbu d0,(axis)
+ movbu d0,(ST_AXIS,a0)
  call refresh_children,[d2,d3,a2,a3],24
  mov (124,a2),a0
  mov 0x900c,d0
@@ -120,6 +139,7 @@ container_axis:
  mov (a0),a1
  mov (a1),a1
  calls (a1)
+container_unarmed:
  mov 1,d0
  ret [d2,d3,a2,a3],24
 container_restore:
@@ -136,7 +156,7 @@ container_stock:
  * instructions, which are replayed. */
 label_get:
  calls (a2)
- movbu (axis),d0
+ call st_axis,[],12
  cmp 0,d0
  beq label_get_done
  mov d2,d0
@@ -156,28 +176,18 @@ label_get_done:
 /* During the native reset command, the stock saturation defaults are not
  * H/L defaults: reset the active experimental axis to zero instead. */
 reset_hook:
- add -4,sp
- mov d0,(sp)
- mov 1,d0
- movbu d0,(axis+8)
- mov (sp),d0
- add 4,sp
+ call st_reset_on,[d2,a2],12
  mov (a0),a1
  mov (a1),a1
  calls (a1)
- add -4,sp
- mov d0,(sp)
- clr d0
- movbu d0,(axis+8)
- mov (sp),d0
- add 4,sp
+ call st_reset_off,[d2,a2],12
  jmp reset_resume
 
 /* Capture only the 13-child colour editor parent; every pointer is checked
  * again before use. This replaces two stock setup instructions. */
 parent_hook:
- add -8,sp
- mov d0,(0,sp)
+ add -12,sp
+ mov d0,(8,sp)
  mov a1,(4,sp)
  movhu (120,a0),d0
  cmp 13,d0
@@ -189,11 +199,11 @@ parent_hook:
  sub 2197,d0
  cmp 8,d0
  bcc parent_restore
- mov a0,(axis+4)
+ call st_set_editor,[a2],8
 parent_restore:
- mov (0,sp),d0
+ mov (8,sp),d0
  mov (4,sp),a1
- add 8,sp
+ add 12,sp
  mov a0,a2
  mov 0,a3
  mov 1,d3
@@ -201,7 +211,10 @@ parent_restore:
 
 /* Refresh the native enum indices so a new axis starts at its own value. */
 refresh_children:
- mov (axis+4),a2
+ call st_ptr,[],8
+ cmp 0,a0
+ beq refresh_done
+ mov (ST_EDITOR,a0),a2
  cmp 0,a2
  beq refresh_done
  movhu (120,a2),d0
@@ -250,6 +263,12 @@ paint_axis:
  mov d0,(16,sp)
  cmp 0,a1
  beq paint_done
+ call st_ptr,[],8
+ cmp 0,a0
+ beq paint_done
+ add ST_LABEL,a0
+ mov a0,(56,sp)
+ mov (20,sp),a1
  movhu (4,a1),d0
  cmp 2,d0
  bne paint_done
@@ -286,9 +305,9 @@ paint_axis:
  movhu d0,(42,sp)
  mov 47,d0
  movhu d0,(46,sp)
- mov axis+16,a0
+ mov (56,sp),a0
  call make_axis_label,[d2,d3,a2,a3],24
- mov axis+16,d1
+ mov (56,sp),d1
  mov a3,a0
  mov sp,a1
  add 40,a1
@@ -325,7 +344,8 @@ paint_done:
  * the native value label, which follows the active axis. */
 make_axis_label:
  mov a0,a2
- movbu (axis),d3
+ call st_axis,[],12
+ mov d0,d3
  mov text_saturation,a1
  cmp 1,d3
  bne label_not_hue
@@ -366,7 +386,8 @@ ui_read:
  sub 928,d0
  cmp 48,d0
  bcc ui_read_stock
- movbu (axis),d3
+ call st_axis,[],12
+ mov d0,d3
  cmp 1,d3
  beq ui_read_alt
  cmp 2,d3
@@ -400,13 +421,14 @@ ui_write:
  sub 928,d0
  cmp 48,d0
  bcc ui_write_stock
- movbu (axis),d0
+ call st_axis,[],12
  cmp 1,d0
  beq ui_write_alt
  cmp 2,d0
  bne ui_write_stock
 ui_write_alt:
- movbu (axis+8),d0
+ mov ST_RESET,d0
+ call st_getb,[],12
  cmp 0,d0
  beq write_not_reset
  clr d3
@@ -421,7 +443,10 @@ write_not_reset:
  call decode,[],4
  mov d3,d1
  and 15,d1
- movbu (axis),d3
+ mov d0,a2
+ call st_axis,[],12
+ mov d0,d3
+ mov a2,d0
  cmp 1,d3
  beq write_hue
  and 15,d0
@@ -454,7 +479,7 @@ ui_write_stock:
  * leaves 12 sector bytes at a2 = sp+88 and the profile (setting 903) in d2.
  * Replaces the 7-byte call at the shared tail 0x60a33eac. */
 display_hook:
- movbu (axis),d0
+ call st_axis,[],12
  cmp 0,d0
  beq display_stock
  mov (a3),d0
@@ -469,7 +494,8 @@ display_stock:
  call stock_display_next,[],4
  jmp display_resume
 display_values:
- movbu (axis),d3
+ call st_axis,[],12
+ mov d0,d3
  mov d2,d0
  exthu d0
  sub 1,d0
@@ -766,14 +792,15 @@ light_lut:
 .section .refresh_cases,"a"
  .long refresh_case,refresh_case,refresh_case,refresh_case,refresh_case,refresh_case
 .section .refresh_guard,"ax"
+/* The profile travels to rt_tail in d2 (callee-saved; this path of the stock
+ * function neither reads nor writes it again, and its ret restores the
+ * caller's value). No store. */
+REFRESH_TAG = 0x52460000
 refresh_case:
- mov d2,d0
- lsr 2,d0
- sub 54,d0
- movbu d0,(refresh_profile)
+ lsr 2,d2
+ sub 54,d2
+ or REFRESH_TAG,d2
  jmp refresh_default
-refresh_profile:
- .byte 0xff
 refresh_guard:
  movbu (loaded_bits),d0
  btst 0x10,d0
@@ -870,48 +897,54 @@ sector_of_record:
 creset:
  mov d0,d2
  mov d1,d3
- /* The save buffer is in section 6's free tail: stock path until loaded. */
+ /* Stock path until startup has completed. */
  movbu (loaded_bits),d0
  btst 0x20,d0
  beq creset_stock
- mov d1,(creset_kind)
  mov 41,d0
  call raw_get,[],4
  extbu d0
  extbu d2
  cmp d0,d2
  beq creset_stock
+ /* 72 cells (904..975) are held on this task's stack across the stock
+  * reset: (8..295,sp). a2/a3 are the caller's and are put back. */
+ add -304,sp
+ mov a2,(296,sp)
+ mov a3,(300,sp)
+ mov d3,a3
  mov 904,d3
- mov creset_buf,a1
+ mov sp,a2
+ add 8,a2
 creset_save:
  mov d3,d0
  mov 1,d1
- mov a1,(creset_ptr)
  call active_read,[d2],8
- mov (creset_ptr),a1
- mov d0,(a1)
- inc4 a1
+ mov d0,(a2)
+ inc4 a2
  inc d3
  cmp 976,d3
  bne creset_save
  mov d2,d0
- mov (creset_kind),d1
+ mov a3,d1
  call creset_orig,[d2,d3],12
- mov d0,(creset_ret)
+ mov d0,a3
  mov 904,d3
- mov creset_buf,a1
+ mov sp,a2
+ add 8,a2
 creset_restore:
- mov a1,(creset_ptr)
- mov (a1),a0
+ mov (a2),a0
  mov d3,d0
  mov 1,d1
  call active_write,[d2],8
- mov (creset_ptr),a1
- inc4 a1
+ inc4 a2
  inc d3
  cmp 976,d3
  bne creset_restore
- mov (creset_ret),d0
+ mov a3,d0
+ mov (296,sp),a2
+ mov (300,sp),a3
+ add 304,sp
  ret [d2,d3],12
 creset_stock:
  mov d2,d0
@@ -1016,7 +1049,7 @@ pm_num_keep:
 
 /* Picture-mode refresh tail for Color Profile 1-3 and Monochrome Profile 1-3
  * (section 5 free tail, entered from refresh_guard once section 5 is loaded).
- * refresh_profile holds the jump-table case: 0..2 = CP1..3 (111 = 54..56),
+ * d3 (from the tag refresh_case leaves in d2) is the case: 0..2 = CP1..3 (111 = 54..56),
  * 3..5 = MONO1..3 (111 = 57..59), 0xff = any other mode.
  *
  * E148's stock refresh never writes 916..927, 1011, 1016, 998 or the tone IDs
@@ -1045,9 +1078,14 @@ rt_tail:
  mov (12,sp),a0
  clr d0
  mov d3,(76,a0)
- movbu (refresh_profile),d3
- mov 0xff,d0
- movbu d0,(refresh_profile)
+ mov 0xff,d3
+ mov d2,d0
+ lsr 8,d0
+ cmp REFRESH_TAG >> 8,d0
+ bne rt_untagged
+ mov d2,d3
+ and 0xff,d3
+rt_untagged:
  /* d2 = tone record ID for this context, 0 = none */
  clr d2
  mov a2,d0
@@ -1283,3 +1321,124 @@ rs_tone_ids:
 rs_stock:
  .hword 916,0, 917,0, 918,0, 919,0, 920,0, 921,0, 922,0, 923,0
  .hword 924,0, 925,0, 926,0, 927,0, 1011,2, 1016,0, 998,0, 0
+
+/* ---- State block access and arming (section 8: loaded before sections 2,
+ * 6 and 7, whose hooks call it). st_ptr must stay first: wb.ld binds it. */
+.section .st8,"ax"
+/* a0 = P, or 0 when not armed / handle out of range. call st_ptr,[],8.
+ * Preserves d0-d3, a1-a3. */
+.global st_ptr
+st_ptr:
+ mov d0,(4,sp)
+ movhu (st_handle),d0
+ mov 0,a0
+ cmp 0,d0
+ beq st_ptr_out
+ cmp ST_HANDLE_MAX,d0
+ bhi st_ptr_out
+ add ST_POOL-1,d0
+ mov d0,a0
+st_ptr_out:
+ mov (4,sp),d0
+ ret [],8
+/* d0 = byte P+0 (axis) / P+d0, or 0 when not armed. call ...,[],12.
+ * Preserves everything else. */
+st_axis:
+ clr d0
+st_getb:
+ mov a0,(4,sp)
+ mov d0,(8,sp)
+ call st_ptr,[],8
+ clr d0
+ cmp 0,a0
+ beq st_getb_out
+ mov (8,sp),d0
+ add d0,a0
+ movbu (a0),d0
+st_getb_out:
+ mov (4,sp),a0
+ ret [],12
+/* Reset-in-progress flag. call ...,[d2,a2],12. Preserves d0,d1,a0,a1. */
+st_reset_on:
+ mov 1,d2
+ bra st_reset_put
+st_reset_off:
+ clr d2
+st_reset_put:
+ mov a0,a2
+ call st_ptr,[],8
+ cmp 0,a0
+ beq st_reset_out
+ movbu d2,(ST_RESET,a0)
+st_reset_out:
+ mov a2,a0
+ ret [d2,a2],12
+/* Remember the colour editor object in a0. call ...,[a2],8. Preserves all. */
+st_set_editor:
+ mov a0,a2
+ call st_ptr,[],8
+ cmp 0,a0
+ beq st_set_editor_out
+ mov a2,(ST_EDITOR,a0)
+st_set_editor_out:
+ mov a2,a0
+ ret [a2],8
+
+/* Half-press trigger (HLS_EVENT task, 0x602f0b95): the displaced stock call
+ * runs first on the same frame; d0 and PSW are dead at the resume point
+ * (0x602f0b9a reloads d0 and tests it). */
+arm_hook:
+ call trig,[d2,d3,a2,a3],36
+ mov (16,sp),d0
+ cmp 0x02000100,d0
+ bne arm_back
+ movhu (st_handle),d0
+ cmp 0,d0
+ bne arm_back
+ call arm_gate,[d2,d3,a2,a3],36
+arm_back:
+ jmp trig_resume
+/* Arm once: every section initialised, caller is the HLS_EVENT task. */
+arm_gate:
+ mov (loaded_bits),d0
+ and 1023,d0
+ cmp 1023,d0
+ bne arm_out
+ mov sp,a0
+ add 12,a0
+ call get_tid,[a2],4
+ cmp 0,d0
+ bne arm_out
+ movhu (hls_tid),d1
+ cmp 0,d1
+ beq arm_out
+ btst 0x8000,d1
+ bne arm_out
+ movhu (12,sp),d0
+ cmp d1,d0
+ bne arm_out
+ mov 1024,d0
+ call malloc,[],4
+ cmp 0,a0
+ beq arm_out
+ mov a0,d2
+ sub ST_POOL-1,d2
+ cmp 0,d2
+ beq arm_out
+ cmp ST_HANDLE_MAX,d2
+ bhi arm_out
+ mov d2,d0
+ and 3,d0
+ cmp 1,d0
+ bne arm_out
+ mov a0,a2
+ add 1024,a2
+ clr d0
+arm_clear:
+ mov d0,(a0)
+ inc4 a0
+ cmp a2,a0
+ bne arm_clear
+ movhu d2,(st_handle)
+arm_out:
+ ret [d2,d3,a2,a3],36

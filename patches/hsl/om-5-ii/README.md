@@ -21,6 +21,13 @@
 > loop. See the [third incident report](../../../research/OM5II-THIRD-BOOT-FAILURE-2026-11-08.md).
 > **Do not flash this build.** The package is now blocked as an install output.
 
+> **11 November source correction:** that build stored runtime state inside the loaded firmware
+> image, which stock never does; its first such stores are on the path that failed. The state now
+> lives in a heap block allocated at the first shutter half-press, and nothing is stored into the
+> image. See the [analysis](../../../research/OM5II-IMAGE-STORE-FAULT-2026-11-11.md). The corrected
+> build (`b038ce1a…ff69`) passes the emulator regressions and **has not been flashed**. It is still
+> an untested image for a camera that has failed three times; the install file stays withheld by default.
+
 **6 November source correction:** the startup guards now use completed section
 initialisation, rather than decoder submission. The oversized RAM-overlay
 prototype is blocked by native section bounds. See the [findings and
@@ -46,7 +53,8 @@ The update package contains only `0x100` (USR/main) and `0x101` (OSD/resources).
 The main image uses opt-in `"repack": "split"` for its two LZ4 sections. This
 keeps their longest literal runs at stock lengths, avoiding the former 93 KB
 and 650 KB runs. Split repacking changes the stored representation without
-changing the decoded edits; the current hashes are in `patch.json`. Other
+changing the decoded edits; the current hashes are in `patch.json`.
+After a deliberate source change, `tools/oly_patch_record.py` records them again and re-runs the strict build. Other
 camera patches do not enable this repack.
 
 The [brick-risk review](BRICK-RISK.md) now **withdraws Probe B as a prerequisite**.

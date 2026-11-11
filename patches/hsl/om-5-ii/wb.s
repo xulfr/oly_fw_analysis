@@ -1,13 +1,14 @@
 /* OM-5 Mark II 1.1 (E148 build 1100) per-profile white balance, ported from
  * the OM-3 patch. NOT tested on a camera; exercised in OM-Emu only.
  * The hook (native commit 0x602d19b1) and this body are both in section 2.
- * Section 6 (stock_ui_write, `busy`) is checked via the completed-initialization bits. */
+ * Section 6 (stock_ui_write) is checked via the completed-initialization bits. */
+ST_BUSY = 12
 .section .wb_hook,"ax"
  jmp wb_load
 .section .wb_extension,"ax"
 /* Only picture-mode (111) and WB edits enter the wrapper; others replay. */
 wb_load:
- /* The wrapper calls stock_ui_write and uses `busy`, both in section 6, which
+ /* The wrapper calls stock_ui_write, in section 6, which
   * boot loads after section 2. The submission flag at 0xa26e2698 can
   * precede decompression; use 0xa26e2694, set after the completion wait
   * and constructors, before touching section-6 code or state. */
@@ -34,13 +35,23 @@ wb_not_profile:
 /* Replaces the first five bytes of the native commit routine. Its caller
  * already saved d2,d3,a2,a3 in a 20-byte frame. Nested commits use stock. */
 wb_commit:
- movbu (busy),d2
+ /* The busy flag is in the heap state block (see hsl.s). Not armed yet
+  * (no half-press since power-on): stock commit. a0/a1 are kept. */
+ add -8,sp
+ mov a0,(4,sp)
+ call st_ptr,[],8
+ mov a0,a2
+ mov (4,sp),a0
+ add 8,sp
+ cmp 0,a2
+ beq wb_original
+ movbu (ST_BUSY,a2),d2
  cmp 0,d2
  bne wb_original
  mov d0,d2
  mov d1,d3
  mov 1,d0
- movbu d0,(busy)
+ movbu d0,(ST_BUSY,a2)
  add -8,sp
  cmp PM_ID,d2
  bne wb_do_commit
@@ -72,8 +83,12 @@ wb_store_edit:
  call wb_current,[d2,d3,a2,a3],20
  call wb_save,[d2,d3,a2,a3],44
 wb_done:
+ call st_ptr,[],8
+ cmp 0,a0
+ beq wb_done_ret
  clr d0
- movbu d0,(busy)
+ movbu d0,(ST_BUSY,a0)
+wb_done_ret:
  mov (4,sp),d0
  add 8,sp
  ret [d2,d3,a2,a3],20

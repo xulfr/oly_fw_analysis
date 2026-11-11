@@ -88,7 +88,7 @@ Both stock inputs must match their full SHA-256:
 
 The complete build was run with GNU binutils 2.45 and jpegtran 2.1.5. Its
 92,274,688-byte experimental package has SHA-256
-`dcbee4c9997d1cb0eeeccfcac3f20b9ea9ba4c6848f6b446277b7665a85d5b9a`.
+`97d87d2430a1deba3cb40b64b43e47370b4ba51f7c5d64428bb2d34ebe1beb9e`.
 `build.json` records actual hashes, tool versions and source hashes on each run.
 JPEG encoder versions may produce different valid entropy coding.
 
@@ -124,3 +124,13 @@ node research/test_om5_transplant_library.mjs /path/to/om-emu \
 
 The native tests used OM-Emu commit
 `147ca89c60b24774f3145c2813d79714e0f0b7b7`.
+
+## 11 November 2026: rebuilt on the corrected donor
+
+The donor source no longer stores into the loaded image
+([analysis](../../../research/OM5II-IMAGE-STORE-FAULT-2026-11-11.md)). The candidate built from it is
+92,274,688 bytes, SHA-256 `97d87d2430a1deba3cb40b64b43e47370b4ba51f7c5d64428bb2d34ebe1beb9e`. The earlier
+`dcbee4c9…5b9a` carried the donor's image stores and should not be used. The heap pool, the event manager
+object and the half-press site are donor (E148) addresses inside the donor application; they do not depend
+on the recipient's layout. Hardware compatibility of the donor application on OM-5 hardware is still
+entirely unestablished.
