@@ -25,7 +25,7 @@
 > image, which stock never does; its first such stores are on the path that failed. The state now
 > lives in a heap block allocated at the first shutter half-press, and nothing is stored into the
 > image. See the [analysis](../../../research/OM5II-IMAGE-STORE-FAULT-2026-11-11.md). The corrected
-> build (`b038ce1a…ff69`) passes the emulator regressions and **has not been flashed**. It is still
+> build (`42fcf6de…4485`) passes the emulator regressions and **has not been flashed**. It is still
 > an untested image for a camera that has failed three times; the install file stays withheld by default.
 
 **6 November source correction:** the startup guards now use completed section

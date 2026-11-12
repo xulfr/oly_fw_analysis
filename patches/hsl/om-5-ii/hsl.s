@@ -235,10 +235,16 @@ refresh_loop:
  cmp 11,d1
  bne refresh_done
  call ui_read,[d2,d3,a2,a3],24
+ /* A cell may hold -7..7 (set from a look); the editor's list has -5..5.
+  * Show the nearest entry rather than abandoning the refresh. */
  cmp -5,d0
- blt refresh_done
+ bge refresh_low_ok
+ mov -5,d0
+refresh_low_ok:
  cmp 5,d0
- bgt refresh_done
+ ble refresh_high_ok
+ mov 5,d0
+refresh_high_ok:
  mov 5,d1
  sub d0,d1
  movhu d1,(94,a3)
@@ -729,7 +735,8 @@ builder_hook:
  mov (24,sp),a3
  add 28,sp
  jmp builder_resume
-/* d0 packed cell -> validated H/L byte, or neutral */
+/* d0 packed cell -> validated H/L byte, or neutral. Each nibble is -7..7, the
+ * span of hue_lut/light_lut; the on-camera editor writes -5..5 only. */
 decode:
  mov d0,d1
  lsr 16,d1
@@ -744,16 +751,16 @@ decode:
  mov d0,d1
  asl 28,d1
  asr 28,d1
- cmp -5,d1
+ cmp -7,d1
  blt decode_zero
- cmp 5,d1
+ cmp 7,d1
  bgt decode_zero
  mov d0,d1
  asl 24,d1
  asr 28,d1
- cmp -5,d1
+ cmp -7,d1
  blt decode_zero
- cmp 5,d1
+ cmp 7,d1
  bgt decode_zero
  and 255,d0
  ret [],4
@@ -1394,10 +1401,25 @@ arm_hook:
  bne arm_back
  movhu (st_handle),d0
  cmp 0,d0
- bne arm_back
+ bne arm_ext
  call arm_gate,[d2,d3,a2,a3],36
+ movhu (st_handle),d0
+ cmp 0,d0
+ beq arm_back
+/* Extension vector: a further layer (Caduceus) may put one entry here. It is
+ * called only once armed, hence with every section initialised, on each
+ * half-press, in the HLS_EVENT task. It is entered by calls and may use
+ * d0, d1, a0, a1. Zero in this patch: nothing is called. */
+arm_ext:
+ mov (ext_halfpress),a0
+ cmp 0,a0
+ beq arm_back
+ call arm_ext_call,[d2,d3,a2,a3],36
 arm_back:
  jmp trig_resume
+arm_ext_call:
+ calls (a0)
+ ret [d2,d3,a2,a3],36
 /* Arm once: every section initialised, caller is the HLS_EVENT task. */
 arm_gate:
  mov (loaded_bits),d0
@@ -1442,3 +1464,7 @@ arm_clear:
  movhu d2,(st_handle)
 arm_out:
  ret [d2,d3,a2,a3],36
+.section .extvec,"a"
+.global ext_halfpress
+ext_halfpress:
+ .long 0

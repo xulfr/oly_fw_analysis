@@ -198,7 +198,7 @@ def build(patch_dir, stock_path, out, tools=None, decoded=False, untested=False)
     if 0x100 in comps:
         from om5ii_boot_audit import STOCK_SHA, audit_ranges
         if sha(comps[0x100].data) == STOCK_SHA:
-            audit_ranges(bytes(comps[0x100].data), spec.get('ranges', []))
+            audit_ranges(bytes(comps[0x100].data), spec.get('ranges', []), spec.get('data_edits', []))
 
     tools = tools or {}
     toolchain = None

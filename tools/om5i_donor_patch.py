@@ -85,7 +85,8 @@ def adapt_main(donor, recipient):
     return bytes(out), edits
 
 
-def build(recipient_path, donor_path, out, toolchain=None, jpegtran=None, untested=False):
+def build(recipient_path, donor_path, out, toolchain=None, jpegtran=None, untested=False, patch_dir=None):
+    patch_dir = Path(patch_dir).resolve() if patch_dir else PATCH
     out = Path(out).resolve()
     require(not out.exists(), 'Output directory must be new')
     require(ROOT/'patches' not in out.parents, 'Keep output outside patch sources')
@@ -109,12 +110,12 @@ def build(recipient_path, donor_path, out, toolchain=None, jpegtran=None, untest
                                   stderr=subprocess.STDOUT, check=True, text=True).stdout.strip()
     with tempfile.TemporaryDirectory(prefix='om5i-donor-') as scratch:
         donor_out = Path(scratch)/'build'
-        donor_report = build_donor(PATCH, donor_path, donor_out, tools=toolchain, decoded=True, untested=False)
+        donor_report = build_donor(patch_dir, donor_path, donor_out, tools=toolchain, decoded=True, untested=False)
         require(donor_report['package_sha256'] not in KNOWN_BOOT_FAILURES, 'Failed donor image')
         feature_main = (donor_out/'decoded/0100.bin').read_bytes()
         feature_osd = (donor_out/'decoded/0101.bin').read_bytes()
         main, edits = adapt_main(feature_main, recipient_main)
-        spec = json.loads((PATCH/'patch.json').read_text())
+        spec = json.loads((patch_dir/'patch.json').read_text())
         # Rebased runtime ranges cannot overwrite any feature patch.
         for row in spec['ranges']:
             if row['component'] == '0x100' and 'address' in row:
@@ -193,11 +194,13 @@ def main():
     p.add_argument('--ld', dest='linker')
     p.add_argument('--objcopy')
     p.add_argument('--jpegtran')
+    p.add_argument('--donor-patch', type=Path, help='donor patch directory (default: patches/hsl/om-5-ii); '
+                   'a composed directory lets further layers be built into the donor before the transplant')
     p.add_argument('--write-untested-package', action='store_true')
     a = p.parse_args()
     report = build(a.stock, a.donor_stock, a.out,
                    {'as': a.assembler, 'ld': a.linker, 'objcopy': a.objcopy},
-                   a.jpegtran, a.write_untested_package)
+                   a.jpegtran, a.write_untested_package, a.donor_patch)
     print(json.dumps({k: report[k] for k in ('target', 'package_sha256', 'package_bytes', 'install',
                                             'camera_tested', 'hardware_compatibility_established')}, indent=2))
 

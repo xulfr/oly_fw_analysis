@@ -16,6 +16,7 @@ SECTIONS {
  .ext7 0x612a4b98 : { *(.ext7) }
  .arm_hook 0x602f0b95 : { *(.arm_hook) }
  .st8 0x613f2ed8 : { *(.st8) }
+ .extvec 0x613f2ffc : { *(.extvec) }
  .refresh_hook 0x602e0826 : { *(.refresh_hook) }
  .creset_hook 0x602db531 : { *(.creset_hook) }
  .refresh_cases 0x604997f0 : { *(.refresh_cases) }
@@ -73,4 +74,4 @@ trig_resume = 0x602f0b9a;
 get_tid = 0x600317b4;
 malloc = 0x60023818;
 ASSERT(st_ptr == 0x613f2ed8, "wb.ld binds st_ptr")
-ASSERT(SIZEOF(.st8) <= 0x613f3000 - 0x613f2ed8, ".st8 leaves section 8")
+ASSERT(SIZEOF(.st8) <= 0x613f2ffc - 0x613f2ed8, ".st8 runs into the extension vector")

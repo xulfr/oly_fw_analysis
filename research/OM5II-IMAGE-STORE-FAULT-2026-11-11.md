@@ -133,3 +133,21 @@ node research/test_om5ii_image_stores.mjs /path/to/om-emu stock/0100.bin stock/0
 
 Do not treat the corrected build as safe. If a trial is ever made, follow the staged order in
 `patches/hsl/om-5-ii/BRICK-RISK.md` and stop at the first anomaly.
+
+## 12 November additions for a further layer
+
+Three changes let another layer (Caduceus) be composed onto this patch without touching its code:
+
+- **Extension vector** `0x613f2ffc` (last word of section 8, zero here). When armed, the half-press hook
+  calls the entry stored there, in the HLS_EVENT task, after every section is initialised. Zero: no call.
+- **H/L cells accept −7..7**, the span the hue and lightness tables already had. The on-camera editor still
+  writes −5..5 and shows the nearest list entry for a wider value; its value label has no text beyond ±5.
+- **One section-extent edit is allowed** (`section_extent_10` in `tools/om5ii_boot_audit.py`): the loader's
+  end constant for section 10 may move from `0x6169d000` up to `0x616a3000`. The flash span is `0xff`, the
+  loader's copy length is `end − start` and nothing else consumes that constant except the bus-monitor
+  bound, which then covers the same bytes. This is a change to resident boot code and is unproven on
+  hardware; this patch does not use it. No other section end may move.
+
+`tools/om5i_donor_patch.py --donor-patch DIR` builds the transplant from a composed patch directory.
+With these, the patch alone builds expanded main and package hashes recorded in `patch.json`
+(`42fcf6de…4485`); the OM-5 I candidate changes accordingly.

@@ -45,8 +45,40 @@ def require_loaded_range(regions, address, size, name):
     return owner['id']
 
 
-def audit_ranges(stock, ranges):
+# Section 10 loads last, after the section-7 card updater is running. The flash image is 0xff from its
+# stock end to the resident library image at 0x616a3000, and the loader takes its copy length from the
+# end selector alone (0x60046452..0x60046483: size = end - start; the only other selector users pass 10
+# to bound the bus monitor, which then covers the same bytes). A patch may therefore declare ONE edit,
+# `section_extent_10`, of that constant. Nothing else may move a section end.
+EXTENT_EDIT = 'section_extent_10'
+EXTENT_LIMIT = 0x616a3000
+
+
+def extended_regions(stock, data_edits):
     regions = loader_regions(stock)
+    edits = [e for e in data_edits if e['name'].startswith('section_extent')]
+    if not edits:
+        return regions
+    if len(edits) != 1 or edits[0]['name'] != EXTENT_EDIT or edits[0].get('component') != '0x100':
+        raise ValueError('Only one section_extent_10 edit is allowed')
+    region = regions[9]
+    at = 0x60047868 + 4*9 - BASE
+    target, = struct.unpack('<I', stock[at:at + 4])
+    if int(edits[0]['address'], 16) != target + 2 or len(bytes.fromhex(edits[0]['after'])) != 4:
+        raise ValueError('section_extent_10 must replace the end operand of the native selector')
+    end, = struct.unpack('<I', bytes.fromhex(edits[0]['after']))
+    if not region['end'] < end <= EXTENT_LIMIT or (end - region['start']) % 0x800:
+        raise ValueError('section_extent_10 outside the free flash span or not 2 KiB aligned')
+    if stock[region['end'] - BASE:end - BASE].count(0xff) != end - region['end']:
+        raise ValueError('section_extent_10 covers stock bytes')
+    region['stock_end'], region['end'] = region['end'], end
+    return regions
+
+
+def audit_ranges(stock, ranges, data_edits=()):
+    regions = extended_regions(stock, data_edits)
     return {r['name']: require_loaded_range(regions, int(r['address'], 16),
                                             r['bytes'], r['name'])
-            for r in ranges if r['component'] == '0x100' and 'address' in r}
+            for r in ranges if r['component'] == '0x100' and 'address' in r
+            # the extent operand is resident boot code, checked by extended_regions
+            and r['name'] != EXTENT_EDIT}
