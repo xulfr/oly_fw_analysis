@@ -1,15 +1,18 @@
 # Olympus / OM System firmware research
 
-> **OM-5 Mark II warning (5 November 2026):** Do not flash the
-> [`codex/om5ii-hsl` patch](patches/hsl/om-5-ii/README.md) or the
-> [full stock-span overlay build](research/OM5II-SECOND-BOOT-FAILURE-2026-11-05.md).
-> Both physical installations led to a boot loop; the owner reports a successful
-> stock restore after each. Neither root cause is established. Known failed
-> install outputs are now blocked by the builders.
+> **OM-5 Mark II status (12 November 2026):** The current source at `145896f`
+> builds an experimental firmware 1.1 candidate with SHA-256
+> `42fcf6de11033f155cf2771d4a82c80243383c1ca3e885faa17d155c38c94485`.
+> The build and static store/layout checks pass, but this candidate has **not
+> been tested on a camera**. See the [patch README](patches/hsl/om-5-ii/README.md)
+> for build instructions and limitations.
 >
-> **8 November 2026:** the corrected startup-readiness build also failed on
-> hardware, in the colour-profile screen
-> ([report](research/OM5II-THIRD-BOOT-FAILURE-2026-11-08.md)). Do not flash it.
+> Three earlier OM-5 Mark II builds failed on a camera: the
+> [4 November patch](patches/hsl/om-5-ii/BRICK-RISK.md), the
+> [5 November overlay](research/OM5II-SECOND-BOOT-FAILURE-2026-11-05.md),
+> and the [8 November startup-readiness build](research/OM5II-THIRD-BOOT-FAILURE-2026-11-08.md).
+> The owner restored stock firmware after each. Their failed packages are
+> blocked as install outputs; the new candidate does not establish camera safety.
 
 Shared knowledge and tools for studying and modifying Olympus and OM System
 camera firmware. The repository covers update files, startup, settings, image

@@ -1,12 +1,12 @@
 # OM-5 Mark II HSL, per-profile white balance, Monochrome Profiles and Live ND32/ND64 (experimental)
 
-> **DO NOT FLASH THIS BUILD.** On 4 November 2026, the owner reported that
+> **Earlier camera failures (4–8 November 2026).** On 4 November, the owner reported that
 > package SHA-256 `35f0caac4b70f1e59e3d5311fdf74a8c021d720755a7441796b080707b79d434`
 > appeared to flash but the OM-5 Mark II then failed to boot: black screen and
 > repeated autofocus movement. The first stock-firmware reflash attempt showed
 > a sustained solid red light; a second attempt recovered the camera.
-> The cause is unknown. Treat this patch and its generated install package as
-> unsafe for camera use pending investigation. This recovery does not establish
+> The cause of that failure is unknown. That package is blocked as an install
+> output. This recovery does not establish
 > that other failures would be recoverable. See [brick-risk review](BRICK-RISK.md).
 
 > **Second boot failure, 5 November 2026:** The owner reports the same boot loop
@@ -19,14 +19,16 @@
 > build (`e2ca5b28…92e1`) booted to the shooting screen, then hung for a couple
 > of seconds on opening the colour-profile selection screen and entered a boot
 > loop. See the [third incident report](../../../research/OM5II-THIRD-BOOT-FAILURE-2026-11-08.md).
-> **Do not flash this build.** The package is now blocked as an install output.
+> That package is blocked as an install output.
 
-> **11 November source correction:** that build stored runtime state inside the loaded firmware
+> **Current candidate (12 November 2026):** the 8 November build stored runtime state inside the loaded firmware
 > image, which stock never does; its first such stores are on the path that failed. The state now
 > lives in a heap block allocated at the first shutter half-press, and nothing is stored into the
 > image. See the [analysis](../../../research/OM5II-IMAGE-STORE-FAULT-2026-11-11.md). The corrected
-> build (`42fcf6de…4485`) passes the emulator regressions and **has not been flashed**. It is still
-> an untested image for a camera that has failed three times; the install file stays withheld by default.
+> build at `145896f` has package SHA-256
+> `42fcf6de11033f155cf2771d4a82c80243383c1ca3e885faa17d155c38c94485`.
+> It passes the build and static store/layout checks and **has not been flashed**.
+> The install file is written only with `--write-untested-package`.
 
 **6 November source correction:** the startup guards now use completed section
 initialisation, rather than decoder submission. The oversized RAM-overlay
@@ -94,7 +96,7 @@ emulator's JPEG shortcut. Commit `bab4641` read the dispatch key (job record
 applied. That is fixed (see "H/L profile selection"). A bounded synthetic
 dispatcher/builder/writer fixture now applies H/L; a normal capture job and
 the real ISP/JPEG result remain untested. The current package SHA-256 is
-`817131a81bd309bc55fe3f12d8a77bf4a02574180eec33ca3443d3d008f2e05e`.
+`42fcf6de11033f155cf2771d4a82c80243383c1ca3e885faa17d155c38c94485`.
 
 ## H/L profile selection
 
