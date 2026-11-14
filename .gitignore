@@ -1,0 +1,5 @@
+__pycache__/
+generated/
+*.BIN
+!card/*.BIN
+node_modules/
